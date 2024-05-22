@@ -30,7 +30,7 @@ if __name__ == "__main__":
     with open(f"./latency.txt", "a") as f:
         f.write(f"input_token, output_token, prefill_time, decode_time, token/s\n")
     idx_text = 0
-    for input_token in [32, 64, 128, 256, 512]:
+    for input_token in [512]:
         for output_token in [64, 128, 256, 512]:
             while True:
                 text = texts[idx_text]
@@ -55,6 +55,8 @@ if __name__ == "__main__":
                     "-e",
                     "-ngl",
                     "16",
+                    "-c",
+                    "1024",
                 ],
                 check=True,  # Optional: will raise an error if the command fails
             )
