@@ -1,4 +1,6 @@
 #include "common.h"
+// Change JSON_ASSERT from assert() to GGML_ASSERT:
+#define JSON_ASSERT GGML_ASSERT
 #include "json.hpp"
 #include "json-schema-to-grammar.h"
 #include "llama.h"
@@ -1800,7 +1802,9 @@ void gpt_print_usage(int /*argc*/, char **argv, const gpt_params &params)
     printf("  -h, --help            show this help message and exit\n");
     printf("  --version             show version and build info\n");
     printf("  -i, --interactive     run in interactive mode\n");
+    printf("  --interactive-specials allow special tokens in user text, in interactive mode\n");
     printf("  --interactive-first   run in interactive mode and wait for input right away\n");
+    printf("  -cnv, --conversation  run in conversation mode (does not print special tokens and suffix/prefix)\n");
     printf("  -ins, --instruct      run in instruction mode (use with Alpaca models)\n");
     printf("  -cml, --chatml        run in chatml mode (use with ChatML-compatible models)\n");
     printf("  --multiline-input     allows you to write or paste multiple lines without ending each in '\\'\n");
@@ -1934,6 +1938,7 @@ void gpt_print_usage(int /*argc*/, char **argv, const gpt_params &params)
         printf("  -mg i, --main-gpu i   the GPU to use for the model (with split-mode = none),\n");
         printf("                        or for intermediate results and KV (with split-mode = row) (default: %d)\n", params.main_gpu);
     }
+    printf("  --rpc SERVERS         comma separated list of RPC servers\n");
     printf("  --verbose-prompt      print a verbose prompt before generation (default: %s)\n", params.verbose_prompt ? "true" : "false");
     printf("  --no-display-prompt   don't print prompt at generation (default: %s)\n", !params.display_prompt ? "true" : "false");
     printf("  -gan N, --grp-attn-n N\n");
@@ -3206,6 +3211,7 @@ void dump_non_result_info_yaml(FILE *stream, const gpt_params &params, const lla
     dump_string_yaml_multiline(stream, "in_suffix", params.input_prefix.c_str());
     fprintf(stream, "instruct: %s # default: false\n", params.instruct ? "true" : "false");
     fprintf(stream, "interactive: %s # default: false\n", params.interactive ? "true" : "false");
+    fprintf(stream, "interactive_specials: %s # default: false\n", params.interactive_specials ? "true" : "false");
     fprintf(stream, "interactive_first: %s # default: false\n", params.interactive_first ? "true" : "false");
     fprintf(stream, "keep: %d # default: 0\n", params.n_keep);
     fprintf(stream, "logdir: %s # default: unset (no logging)\n", params.logdir.c_str());

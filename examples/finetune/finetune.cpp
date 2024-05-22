@@ -563,8 +563,8 @@ static struct ggml_tensor * llama_build_lora_finetune_graphs(
         // not capturing these, to silcence warnings
         const int rope_mode = 0;
 
-        return ggml_rope_custom(ctx,
-            t, KQ_pos, n_rot, rope_mode, n_ctx, 0,
+        return ggml_rope_ext(ctx,
+            t, KQ_pos, nullptr, n_rot, rope_mode, n_ctx, 0,
             rope_freq_base, rope_freq_scale, 0.0f, 1.0f, 0.0f, 0.0f
         );
     };
@@ -575,7 +575,7 @@ static struct ggml_tensor * llama_build_lora_finetune_graphs(
     GGML_ASSERT(tokens_input->type == GGML_TYPE_I32);
 
     auto add_to_f32 = [] (struct ggml_context * ctx, struct ggml_tensor * a, struct ggml_tensor * b) {
-        if (ggml_is_quantized(a->type) || a->type == GGML_TYPE_F16) {
+        if (ggml_is_quantized(a->type) || a->type == GGML_TYPE_F16 || a->type == GGML_TYPE_BF16) {
             return ggml_add_cast(ctx, a, b, GGML_TYPE_F32);
         } else if (a->type == GGML_TYPE_F32) {
             return ggml_add(ctx, a, b);
