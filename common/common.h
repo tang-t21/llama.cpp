@@ -143,6 +143,7 @@ struct gpt_sampler_params {
 
 struct gpt_params {
     int32_t n_predict             =    -1; // new tokens to predict
+    int32_t prompt_length         =    -1; // prompt length
     int32_t n_ctx                 =     0; // context size
     int32_t n_batch               =  2048; // logical batch size for prompt processing (must be >=32 to use BLAS)
     int32_t n_ubatch              =   512; // physical batch size for prompt processing (must be >=32 to use BLAS)

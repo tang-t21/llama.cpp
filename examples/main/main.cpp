@@ -301,7 +301,7 @@ int main(int argc, char ** argv) {
             LOG_DBG("use session tokens\n");
             embd_inp = session_tokens;
         }
-
+        embd_inp.resize(params.prompt_length);
         LOG_DBG("prompt: \"%s\"\n", prompt.c_str());
         LOG_DBG("tokens: %s\n", string_from(ctx, embd_inp).c_str());
     }
@@ -927,7 +927,11 @@ int main(int argc, char ** argv) {
     LOG("\n\n");
     gpt_perf_print(ctx, smpl);
     write_logfile(ctx, params, model, input_tokens, output_ss.str(), output_tokens);
-
+    auto timings = llama_perf_context(ctx);
+    std::ofstream file;
+    file.open("latency.txt", std::ios::app);
+    file << params.prompt_length << "," << params.n_predict << "," << 1e3 / timings.t_eval_ms * timings.n_eval << std::endl;
+    file.close();
     gpt_sampler_free(smpl);
 
     llama_free(ctx);

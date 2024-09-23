@@ -665,6 +665,13 @@ gpt_params_context gpt_params_parser_init(gpt_params & params, llama_example ex,
         }
     ).set_env("LLAMA_ARG_N_PREDICT"));
     add_opt(llama_arg(
+        {"-promp_len", "--prompt-length"}, "N",
+        format("number of tokens to process (default: %d)", params.prompt_length),
+        [](gpt_params & params, int value) {
+            params.prompt_length = value;
+        }
+    ).set_env("LLAMA_ARG_PROMPT_LENGTH"));
+    add_opt(llama_arg(
         {"-b", "--batch-size"}, "N",
         format("logical maximum batch size (default: %d)", params.n_batch),
         [](gpt_params & params, int value) {
