@@ -11,16 +11,27 @@ import time
 
 if __name__ == "__main__":
 
-    path_json = "../ShareGPT_V3_unfiltered_cleaned_split.json"
+    path_json = "./lmsys_chat.jsonl"
     with open(path_json, "r") as f:
-        data = json.load(f)
-
+        data = [json.loads(line)["conversation"][0]["content"] for line in f]
+    dataset_name="LMSYS"
     texts = []
     for d in data:
-        if len(d["conversations"]) == 0:
+        if len(d) == 0:
             continue
         # the input of the first round
-        texts.append(" ".join(d["conversations"][0]["value"].split()))
+        texts.append(" ".join(d.split()))
+
+    # path_json = "../ShareGPT_V3_unfiltered_cleaned_split.json"
+    # with open(path_json, "r") as f:
+    #     data = json.load(f)
+    # dataset_name = "ShareGPT"
+    # texts = []
+    # for d in data:
+    #     if len(d["conversations"]) == 0:
+    #         continue
+    #     # the input of the first round
+    #     texts.append(" ".join(d["conversations"][0]["value"].split()))
 
     random.seed(0)
     random.shuffle(texts)
@@ -30,10 +41,10 @@ if __name__ == "__main__":
     with open(f"./latency.txt", "a") as f:
         f.write(f"input_token, output_token, prefill_time, decode_time, token/s\n")
     idx_text = 0
-    # for input_token in [32, 64, 128, 256, 512]:
-    #     for output_token in [64, 128, 256, 512]:
-    for input_token in [32]:
-        for output_token in [64]:
+    for input_token in [32, 64, 128, 256, 512, 1024]:
+        for output_token in [64, 128, 256, 512, 1024,2049,4096]:
+    # for input_token in [32]:
+    #     for output_token in [64]:
             while True:
                 text = texts[idx_text]
                 idx_text += 1
