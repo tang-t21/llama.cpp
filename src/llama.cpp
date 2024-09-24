@@ -6509,21 +6509,21 @@ static void llm_load_vocab(
         //       for now, we apply this workaround to find the EOT token based on its text
         if (vocab.special_eot_id == -1) {
             for (const auto & t : vocab.token_to_id) {
-                if (
+                if (false
                         // TODO: gemma "<end_of_turn>" is exported as a normal token, so the following check does not work
                         //       need to fix convert script
                         //vocab.id_to_token[t.second].type == LLAMA_TOKEN_TYPE_CONTROL &&
-                        (t.first == "<|eot_id|>" ||
-                         t.first == "<|im_end|>" ||
-                         t.first == "<|end|>" ||
-                         t.first == "<end_of_turn>" ||
-                         t.first == "<|endoftext|>"
-                        )
+                        || t.first == "<|eot_id|>"
+                        || t.first == "<|im_end|>"
+                        || t.first == "<|end|>"
+                        || t.first == "<end_of_turn>"
+                        || t.first == "<|endoftext|>"
+                        || t.first == "<EOT>"
                    ) {
                     vocab.special_eot_id = t.second;
                     if ((vocab.id_to_token[t.second].attr & LLAMA_TOKEN_ATTR_CONTROL) == 0) {
                         LLAMA_LOG_WARN("%s: control-looking token: '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
-                            __func__, t.first.c_str());
+                                __func__, t.first.c_str());
                         vocab.id_to_token[t.second].attr = LLAMA_TOKEN_ATTR_CONTROL;
                     }
                     break;
@@ -6545,6 +6545,44 @@ static void llm_load_vocab(
                     vocab.id_to_token[t->second].attr = LLAMA_TOKEN_ATTR_CONTROL;
                 }
             }
+        }
+
+        // maintain a list of tokens that cause end-of-generation
+        // this is currently determined based on the token text, which is obviously not ideal
+        // ref: https://github.com/ggerganov/llama.cpp/issues/9606
+        vocab.special_eog_ids.clear();
+        for (const auto & t : vocab.token_to_id) {
+            if (false
+                    || t.first == "<|eot_id|>"
+                    || t.first == "<|im_end|>"
+                    || t.first == "<|end|>"
+                    || t.first == "<end_of_turn>"
+                    || t.first == "<|endoftext|>"
+                    || t.first == "<|eom_id|>"
+                    || t.first == "<EOT>"
+               ) {
+                vocab.special_eog_ids.insert(t.second);
+                if ((vocab.id_to_token[t.second].attr & LLAMA_TOKEN_ATTR_CONTROL) == 0) {
+                    LLAMA_LOG_WARN("%s: control-looking token: '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
+                            __func__, t.first.c_str());
+                    vocab.id_to_token[t.second].attr = LLAMA_TOKEN_ATTR_CONTROL;
+                }
+            }
+        }
+
+        if (vocab.special_eos_id != -1 && vocab.special_eog_ids.count(vocab.special_eos_id) == 0) {
+            vocab.special_eog_ids.insert(vocab.special_eos_id);
+            LLAMA_LOG_WARN("%s: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect\n", __func__);
+        }
+
+        if (vocab.special_eot_id != -1 && vocab.special_eog_ids.count(vocab.special_eot_id) == 0) {
+            vocab.special_eog_ids.insert(vocab.special_eot_id);
+            LLAMA_LOG_WARN("%s: special_eot_id is not in special_eog_ids - the tokenizer config may be incorrect\n", __func__);
+        }
+
+        if (vocab.special_eom_id != -1 && vocab.special_eog_ids.count(vocab.special_eom_id) == 0) {
+            vocab.special_eog_ids.insert(vocab.special_eom_id);
+            LLAMA_LOG_WARN("%s: special_eom_id is not in special_eog_ids - the tokenizer config may be incorrect\n", __func__);
         }
     }
 
@@ -6749,6 +6787,11 @@ static void llm_load_print_meta(llama_model_loader & ml, llama_model & model) {
     if (vocab.special_suffix_id != -1) { LLAMA_LOG_INFO( "%s: SUF token        = %d '%s'\n", __func__, vocab.special_suffix_id, vocab.id_to_token[vocab.special_suffix_id].text.c_str() ); }
     if (vocab.special_middle_id != -1) { LLAMA_LOG_INFO( "%s: MID token        = %d '%s'\n", __func__, vocab.special_middle_id, vocab.id_to_token[vocab.special_middle_id].text.c_str() ); }
     if (vocab.special_eot_id    != -1) { LLAMA_LOG_INFO( "%s: EOT token        = %d '%s'\n", __func__, vocab.special_eot_id,    vocab.id_to_token[vocab.special_eot_id].text.c_str() );    }
+    if (vocab.special_eom_id    != -1) { LLAMA_LOG_INFO( "%s: EOM token        = %d '%s'\n", __func__, vocab.special_eom_id,    vocab.id_to_token[vocab.special_eom_id].text.c_str() );    }
+
+    for (const auto & id : vocab.special_eog_ids) {
+        LLAMA_LOG_INFO( "%s: EOG token        = %d '%s'\n", __func__, id, vocab.id_to_token[id].text.c_str() );
+    }
 
     LLAMA_LOG_INFO("%s: max token length = %d\n", __func__, vocab.max_token_len);
 
@@ -9930,17 +9973,36 @@ struct llm_build_context {
             const int64_t n_head_kv = hparams.n_head_kv(il);
             const int64_t n_embd_k_gqa = hparams.n_embd_k_gqa(il);
             struct ggml_tensor * rope_factors = build_rope_factors(il);
-            struct ggml_tensor * tmp =
-                // we rotate only the first n_rot dimensions
-                ggml_rope_ext_inplace(ctx0,
-                        ggml_view_3d(ctx0, kv_self.k_l[il],
-                            n_embd_head_k, n_head_kv, n_ctx,
-                            ggml_row_size(kv_self.k_l[il]->type, n_embd_head_k),
-                            ggml_row_size(kv_self.k_l[il]->type, n_embd_k_gqa),
-                            0),
+            struct ggml_tensor * k =
+                ggml_view_3d(ctx0, kv_self.k_l[il],
+                    n_embd_head_k, n_head_kv, n_ctx,
+                    ggml_row_size(kv_self.k_l[il]->type, n_embd_head_k),
+                    ggml_row_size(kv_self.k_l[il]->type, n_embd_k_gqa),
+                    0);
+
+            struct ggml_tensor * tmp;
+            if (ggml_is_quantized(k->type)) {
+                // dequantize to f32 -> RoPE -> quantize back
+                tmp = ggml_cast(ctx0, k, GGML_TYPE_F32);
+                cb(tmp, "K_f32", il);
+                for (auto * backend : lctx.backends) {
+                    // Figure out which backend KV cache belongs to
+                    if (ggml_backend_supports_buft(backend, lctx.model.buft_layer[il].buft)) {
+                        ggml_backend_sched_set_tensor_backend(lctx.sched, tmp, backend);
+                        break;
+                    }
+                }
+                tmp = ggml_rope_ext_inplace(ctx0, tmp,
                         lctx.inp_K_shift, rope_factors, n_rot, rope_type, n_ctx_orig, freq_base, freq_scale,
                         ext_factor, attn_factor, beta_fast, beta_slow);
-
+                cb(tmp, "K_shifted_f32", il);
+                tmp = ggml_cpy(ctx0, tmp, k);
+            } else {
+                // we rotate only the first n_rot dimensions
+                tmp = ggml_rope_ext_inplace(ctx0, k,
+                        lctx.inp_K_shift, rope_factors, n_rot, rope_type, n_ctx_orig, freq_base, freq_scale,
+                        ext_factor, attn_factor, beta_fast, beta_slow);
+            }
             cb(tmp, "K_shifted", il);
             ggml_build_forward_expand(gf, tmp);
         }
@@ -18652,9 +18714,9 @@ struct llama_model * llama_load_model_from_file(
             unsigned percentage = (unsigned) (100 * progress);
             while (percentage > *cur_percentage_p) {
                 *cur_percentage_p = percentage;
-                LLAMA_LOG(".");
+                LLAMA_LOG_CONT(".");
                 if (percentage >= 100) {
-                    LLAMA_LOG("\n");
+                    LLAMA_LOG_CONT("\n");
                 }
             }
             return true;
