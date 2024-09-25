@@ -930,7 +930,7 @@ int main(int argc, char ** argv) {
     auto timings = llama_perf_context(ctx);
     std::ofstream file;
     file.open("latency.txt", std::ios::app);
-    file << params.prompt_length << "," << params.n_predict << "," << timings.t_p_eval_ms*1e-3 <<"," <<timings.t_eval_ms*1e-3 <<","<<1e3 / timings.t_eval_ms * timings.n_eval << std::endl;
+    file << params.prompt_length << "," << params.n_predict << "," << timings.t_p_eval_ms*1e-3 <<"," <<timings.t_eval_ms*1e-3 <<","<<1e3 / (timings.t_eval_ms+timings.t_p_eval_ms) * timings.n_eval << std::endl;
     file.close();
     gpt_sampler_free(smpl);
 
