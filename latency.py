@@ -11,7 +11,7 @@ import time
 
 if __name__ == "__main__":
 
-    path_json = "./lmsys_chat.jsonl"
+    path_json = "../lmsys_chat.jsonl"
     with open(path_json, "r") as f:
         data = [json.loads(line)["conversation"][0]["content"] for line in f]
     dataset_name="LMSYS"
@@ -39,10 +39,11 @@ if __name__ == "__main__":
     # for input_token in [16, 32, 64, 128]:
     #     for output_token in [16, 32, 64, 128, 256, 512]:
     with open(f"./latency.txt", "a") as f:
+        f.write(f"eval on dataset{dataset_name}\n")
         f.write(f"input_token, output_token, prefill_time, decode_time, token/s\n")
     idx_text = 0
-    for input_token in [32, 64, 128, 256, 512, 1024]:
-        for output_token in [64, 128, 256, 512, 1024,2049,4096]:
+    for input_token in [64, 128, 256, 512, 1024, 2048, 4096]:
+        for output_token in [64, 128, 256, 512, 1024]:
     # for input_token in [32]:
     #     for output_token in [64]:
             while True:
@@ -58,7 +59,7 @@ if __name__ == "__main__":
                 [
                     "./build/bin/llama-cli",
                     "-m",
-                    "/root/llama.cpp/models/mixtral-87B-v0.1.gguf",
+                    "./models/mixtral-87B-v0.1.gguf",
                     "-p",
                     f'"{text}"',
                     "--prompt_length",
@@ -67,9 +68,9 @@ if __name__ == "__main__":
                     str(output_token),
                     "-e",
                     "-ngl",
-                    "8",
+                    "15",
                     "-t",
-                    "16"
+                    "8"
                 ],
                 check=True,  # Optional: will raise an error if the command fails
             )
