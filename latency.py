@@ -71,7 +71,7 @@ if __name__ == "__main__":
                     "-ngl",
                     "7",
                     "-t",
-                    "16"
+                    "8"
                 ],
                 check=True,  # Optional: will raise an error if the command fails
             )
