@@ -11,7 +11,7 @@ import time
 
 if __name__ == "__main__":
 
-    # path_json = "../fiddler/benchmarks/lmsys_chat.jsonl"
+    # path_json = "../lmsys_chat.jsonl"
     # with open(path_json, "r") as f:
     #     data = [json.loads(line)["conversation"][0]["content"] for line in f]
     # dataset_name="LMSYS"
@@ -22,8 +22,7 @@ if __name__ == "__main__":
     #     # the input of the first round
     #     texts.append(" ".join(d.split()))
 
-    path_json = "../fiddler/benchmarks/ShareGPT_V3_unfiltered_cleaned_split.json"
-    model_path = "../llama.cpp/models/mixtral-87B-v0.1.gguf"
+    path_json = "../ShareGPT_V3_unfiltered_cleaned_split.json"
     with open(path_json, "r") as f:
         data = json.load(f)
     dataset_name = "ShareGPT"
@@ -31,9 +30,11 @@ if __name__ == "__main__":
     for d in data:
         if len(d["conversations"]) == 0:
             continue
-        # the input of the first round
+        # the input of the first round 
         texts.append(" ".join(d["conversations"][0]["value"].split()))
+    del data
 
+    model_path = "./models/mixtral-87B-v0.1.gguf"
     random.seed(0)
     random.shuffle(texts)
     # for input_token in [16, 32, 64, 128]:
@@ -42,8 +43,7 @@ if __name__ == "__main__":
         f.write(f"eval on dataset {dataset_name}\n")
         f.write(f"input_token, output_token, prefill_time, decode_time, token/s\n")
     idx_text = 0
-    for input_token in [32, 64, 128, 256, 512, 1024, 2048, 4096]:
-        random.shuffle(texts)
+    for input_token in [1024]:
         input_text = None
         for text in texts:
             if len(text.split()) >= input_token:
@@ -69,9 +69,10 @@ if __name__ == "__main__":
                     str(output_token),
                     "-e",
                     "-ngl",
-                    "7",
+                    "14",
                     "-t",
-                    "8"
+                    "8",
+                    "-fa",
                 ],
                 check=True,  # Optional: will raise an error if the command fails
             )
