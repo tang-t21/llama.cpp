@@ -9,40 +9,48 @@ import numpy as np
 import subprocess
 import time
 
+def load_input_data(dataset_name, dataset_path):
+    texts = []
+    if dataset_name == "LMSYS":
+        with open(dataset_path, "r") as f:
+            data = [json.loads(line)["conversation"][0]["content"] for line in f]
+        for d in data:
+            if len(d) == 0:
+                continue
+            # the input of the first round
+            texts.append(" ".join(d.split()))
+    elif dataset_name == "ShareGPT":
+        with open(dataset_path, "r") as f:
+            data = json.load(f)
+        for d in data:
+            if len(d["conversations"]) == 0:
+                continue
+            # the input of the first round 
+            texts.append(" ".join(d["conversations"][0]["value"].split())) 
+    else:
+        raise ValueError("No matching dataset")
+    return texts
+
 if __name__ == "__main__":
 
-    # path_json = "../lmsys_chat.jsonl"
-    # with open(path_json, "r") as f:
-    #     data = [json.loads(line)["conversation"][0]["content"] for line in f]
-    # dataset_name="LMSYS"
-    # texts = []
-    # for d in data:
-    #     if len(d) == 0:
-    #         continue
-    #     # the input of the first round
-    #     texts.append(" ".join(d.split()))
+   
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", type=str, help="Name of dataset")
+    parser.add_argument("--data_path", type=str, help="Path to dataset")
+    args = parser.parse_args()
+    print(args.dataset, args.data_path)
+    texts = load_input_data(args.dataset, args.data_path)
 
-    path_json = "../ShareGPT_V3_unfiltered_cleaned_split.json"
-    with open(path_json, "r") as f:
-        data = json.load(f)
-    dataset_name = "ShareGPT"
-    texts = []
-    for d in data:
-        if len(d["conversations"]) == 0:
-            continue
-        # the input of the first round 
-        texts.append(" ".join(d["conversations"][0]["value"].split()))
-    del data
-
-    model_path = "./models/mixtral-87B-v0.1.gguf"
+    model_path = "../old-llama.cpp/models/mixtral-8-7B.gguf"
     random.seed(0)
     random.shuffle(texts)
     # for input_token in [16, 32, 64, 128]:
     #     for output_token in [16, 32, 64, 128, 256, 512]:
     with open(f"./latency.txt", "a") as f:
-        f.write(f"eval on dataset {dataset_name}\n")
+        f.write(f"eval on dataset {args.dataset}\n")
         f.write(f"input_token, output_token, prefill_time, decode_time, token/s\n")
     idx_text = 0
+    # for input_token in [32, 64, 128, 256, 512]:
     for input_token in [1024]:
         input_text = None
         for text in texts:
@@ -69,7 +77,7 @@ if __name__ == "__main__":
                     str(output_token),
                     "-e",
                     "-ngl",
-                    "14",
+                    "15",
                     "-t",
                     "8",
                     "-fa",
